@@ -116,5 +116,50 @@ namespace MapLib
             }
             return minDistance;
         }
+
+        /// <summary>
+        /// 将折线转换为多边形区域（沿折线两侧偏移指定距离）
+        /// </summary>
+        /// <param name="line">原始折线点集合（[经度, 纬度]数组）</param>
+        /// <param name="range">偏移距离（单位：米，默认10米）</param>
+        /// <returns>多边形区域点集合（闭合区域）</returns>
+        public static double[][] LineToRegion(this double[][] line, double range = 10)
+        {
+            // 存储左侧和右侧偏移点
+            List<double[]> leftPoints = new List<double[]>(line.Length), rightPoints = new List<double[]>(line.Length);
+            double[]? lastPoint = null;
+
+            // 遍历折线的每条线段
+            for (int i = 1; i < line.Length; i++)
+            {
+                double[] startPoint = line[i - 1], endPoint = line[i];
+
+                // 跳过重复点（避免方向计算错误）
+                if (lastPoint != null && (lastPoint[0] == endPoint[0] && lastPoint[1] == endPoint[1])) continue;
+
+                lastPoint = endPoint;
+                LngLat start = new LngLat(startPoint), end = new LngLat(endPoint);
+
+                // 计算线段方位角（前进方向）
+                double angle = Azimuth(start, end);
+                // 左侧偏移点（方位角-90度）
+                leftPoints.Add(Destination(start, angle - 90, range).ToDouble());
+                // 右侧偏移点（方位角+90度），逆序插入以保证闭合
+                rightPoints.Insert(0, Destination(start, angle + 90, range).ToDouble());
+
+                // 处理最后一条线段的终点偏移
+                if (i == line.Length - 1)
+                {
+                    leftPoints.Add(Destination(end, angle - 90, range).ToDouble());
+                    rightPoints.Insert(0, Destination(end, angle + 90, range).ToDouble());
+                }
+            }
+
+            // 合并左侧和右侧点，形成闭合多边形
+            var region = new List<double[]>(leftPoints.Count + rightPoints.Count);
+            region.AddRange(leftPoints);
+            region.AddRange(rightPoints);
+            return region.ToArray();
+        }
     }
 }

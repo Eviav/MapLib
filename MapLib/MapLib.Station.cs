@@ -18,7 +18,7 @@ namespace MapLib
         {
             double totalDistance = lines.Distance(); // 计算折线总长度
             // 生成高密度采样点（用于桩号插值）
-            List<double[]> denseLine = LineDense(lines, totalDistance);
+            List<double[]> denseLine = DenseSampleLine(lines, totalDistance);
 
             // 处理自定义桩号分割
             if (station_div != null && station_div.Count > 1)
@@ -35,7 +35,7 @@ namespace MapLib
                     if (startIndex == endIndex) continue; // 跳过重复点
 
                     // 截取线段并添加到分段列表
-                    var segmentLine = denseLine.LineSubstring(startIndex, endIndex);
+                    var segmentLine = denseLine.LineSegmentSubstring(startIndex, endIndex);
                     if (segmentLine.Count > 2)
                         segments.Add(new RoadStations(segmentLine, startStation, divPoint.m));
 
@@ -49,14 +49,8 @@ namespace MapLib
             else
             {
                 // 无自定义分割：直接按总长度生成
-                if (direction && sm > totalDistance)
-                    return StationAuto(
-                        new List<RoadStations> { new RoadStations(denseLine, sm, sm - (int)Math.Ceiling(totalDistance)) },
-                        totalDistance, m, sm);
-                else
-                    return StationAuto(
-                        new List<RoadStations> { new RoadStations(denseLine, sm, sm + (int)Math.Ceiling(totalDistance)) },
-                        totalDistance, m, sm);
+                if (direction && sm > totalDistance) return StationAuto(new List<RoadStations> { new RoadStations(denseLine, sm, sm - (int)Math.Ceiling(totalDistance)) }, totalDistance, m, sm);
+                else return StationAuto(new List<RoadStations> { new RoadStations(denseLine, sm, sm + (int)Math.Ceiling(totalDistance)) }, totalDistance, m, sm);
             }
         }
 
@@ -84,7 +78,7 @@ namespace MapLib
         /// <param name="lines">原始折线</param>
         /// <param name="totalDistance">折线总长度</param>
         /// <returns>高密度采样后的点集合</returns>
-        static List<double[]> LineDense(double[][] lines, double totalDistance)
+        static List<double[]> DenseSampleLine(double[][] lines, double totalDistance)
         {
             // 采样间隔：总长度的1/3，最小1米
             double interval = totalDistance / 3;
@@ -139,7 +133,7 @@ namespace MapLib
         /// <param name="st">起始索引（包含）</param>
         /// <param name="et">结束索引（不包含）</param>
         /// <returns>子线段点集合</returns>
-        static List<double[]> LineSubstring(this List<double[]> lines, int st, int et)
+        static List<double[]> LineSegmentSubstring(this List<double[]> lines, int st, int et)
         {
             var subLine = new List<double[]>(et - st);
             for (int i = st; i < et; i++) subLine.Add(lines[i]);

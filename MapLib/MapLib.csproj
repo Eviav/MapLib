@@ -5,6 +5,7 @@
 		<TargetFrameworks>net9.0;net8.0;net6.0;net48;net46;net40</TargetFrameworks>
 		<Authors>Tom</Authors>
 		<ImplicitUsings>disable</ImplicitUsings>
+		<Nullable>enable</Nullable>
 		<LangVersion>10.0</LangVersion>
 		<Authors>Tom</Authors>
 		<Company>Tom</Company>

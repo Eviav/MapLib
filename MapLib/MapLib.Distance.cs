@@ -66,13 +66,35 @@ namespace MapLib
         }
 
         /// <summary>
+        /// 计算多点连成的折线总长度
+        /// </summary>
+        /// <param name="lines">折线点集合（按顺序排列）</param>
+        /// <returns>折线总长度（单位：米）；点数量不足时返回0</returns>
+        public static double Distance(this IList<LngLat> lines)
+        {
+            if (lines.Count > 0)
+            {
+                double total = 0;
+                var previousPoint = lines[0];
+                // 累加相邻点之间的距离
+                for (int i = 1; i < lines.Count; i++)
+                {
+                    total += Distance(previousPoint, lines[i]);
+                    previousPoint = lines[i];
+                }
+                return total;
+            }
+            return 0;
+        }
+
+        /// <summary>
         /// 查找点到带桩号线段的最近点及对应桩号
         /// </summary>
         /// <param name="current">当前点坐标</param>
         /// <param name="line">带桩号的线段点集合（LngLatTag包含桩号信息）</param>
         /// <param name="station">输出参数：最近点对应的桩号（可能为null）</param>
         /// <returns>最近的带桩号点；查找失败返回null</returns>
-        public static LngLatTag? Distance(this LngLat current, IList<LngLatTag> line, out int? station)
+        public static LngLatTag? DistanceToTaggedPointsWithStation(this LngLat current, IList<LngLatTag> line, out int? station)
         {
             try
             {
