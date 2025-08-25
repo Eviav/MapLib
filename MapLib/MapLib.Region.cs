@@ -43,7 +43,7 @@ namespace MapLib
         }
 
         /// <summary>
-        /// 判断经纬度点是否在多边形区域内（射线法，重载：普通LngLat点）
+        /// 判断经纬度点是否在多边形区域内（射线法）
         /// </summary>
         /// <param name="lng">点的经度</param>
         /// <param name="lat">点的纬度</param>
@@ -51,24 +51,62 @@ namespace MapLib
         /// <returns>true：点在区域内；false：点在区域外或多边形无效</returns>
         public static bool IsInRegion(double lng, double lat, IList<LngLat> paths)
         {
-            if (paths.Count < 3) return false;
+            if (paths.Count < 3) return false; // 少于3个点无法构成多边形
 
-            int crossCount = 0;
+            int crossCount = 0; // 射线与多边形边界的交点数量
             int pathCount = paths.Count;
             for (int i = 0; i < pathCount; i++)
             {
-                int nextIndex = (i == pathCount - 1) ? 0 : i + 1;
+                int nextIndex = (i == pathCount - 1) ? 0 : i + 1; // 闭合多边形（最后一点连接第一点）
                 double lngStart = paths[i].lng, latStart = paths[i].lat;
                 double lngEnd = paths[nextIndex].lng, latEnd = paths[nextIndex].lat;
 
+                // 判断点的纬度是否在当前边的纬度范围内（可能相交）
                 if ((lat >= latStart && lat < latEnd) || (lat >= latEnd && lat < latStart))
                 {
-                    if (Math.Abs(latStart - latEnd) <= 0) continue;
+                    if (Math.Abs(latStart - latEnd) <= 0) continue; // 跳过水平边（避免除零）
 
+                    // 计算射线与边的交点经度
                     double intersectLng = lngStart - ((lngStart - lngEnd) * (latStart - lat)) / (latStart - latEnd);
+                    // 若交点在点的右侧，计数加1
                     if (intersectLng < lng) crossCount++;
                 }
             }
+            // 交点数量为奇数则在区域内
+            return (crossCount % 2) != 0;
+        }
+
+        /// <summary>
+        /// 判断经纬度点是否在多边形区域内（射线法）
+        /// </summary>
+        /// <param name="lng">点的经度</param>
+        /// <param name="lat">点的纬度</param>
+        /// <param name="paths">多边形边界点集合（按顺序排列）</param>
+        /// <returns>true：点在区域内；false：点在区域外或多边形无效</returns>
+        public static bool IsInRegion(double lng, double lat, IList<double[]> paths)
+        {
+            if (paths.Count < 3) return false; // 少于3个点无法构成多边形
+
+            int crossCount = 0; // 射线与多边形边界的交点数量
+            int pathCount = paths.Count;
+            for (int i = 0; i < pathCount; i++)
+            {
+                int nextIndex = (i == pathCount - 1) ? 0 : i + 1; // 闭合多边形（最后一点连接第一点）
+                double lngStart = paths[i][0], latStart = paths[i][1];
+                double lngEnd = paths[nextIndex][0], latEnd = paths[nextIndex][1];
+
+                // 判断点的纬度是否在当前边的纬度范围内（可能相交）
+                if ((lat >= latStart && lat < latEnd) || (lat >= latEnd && lat < latStart))
+                {
+                    if (Math.Abs(latStart - latEnd) <= 0) continue; // 跳过水平边（避免除零）
+
+                    // 计算射线与边的交点经度
+                    double intersectLng = lngStart - ((lngStart - lngEnd) * (latStart - lat)) / (latStart - latEnd);
+                    // 若交点在点的右侧，计数加1
+                    if (intersectLng < lng) crossCount++;
+                }
+            }
+            // 交点数量为奇数则在区域内
             return (crossCount % 2) != 0;
         }
 

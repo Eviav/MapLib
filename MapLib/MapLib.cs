@@ -33,7 +33,7 @@ namespace MapLib
         public static double Azimuth(this LngLat start, LngLat end) => Azimuth(start.lng, start.lat, end.lng, end.lat);
 
         /// <summary>
-        /// 计算两点间的方位角（数组重载）
+        /// 计算两点间的方位角（从起点到终点的前进方向）
         /// </summary>
         /// <param name="start">起点坐标数组（[经度, 纬度]）</param>
         /// <param name="end">终点坐标数组（[经度, 纬度]）</param>
@@ -69,7 +69,7 @@ namespace MapLib
         public static LngLat Destination(this LngLat current, double bearing, double m) => Destination(current.lng, current.lat, bearing, m);
 
         /// <summary>
-        /// 计算目标点坐标（数组重载）
+        /// 根据起点、方位角和距离计算目标点坐标
         /// </summary>
         /// <param name="current">起点坐标数组</param>
         /// <param name="bearing">方位角</param>
@@ -78,7 +78,7 @@ namespace MapLib
         public static LngLat Destination(this double[] current, double bearing, double m) => Destination(current[0], current[1], bearing, m);
 
         /// <summary>
-        /// 计算目标点坐标（经纬度参数）
+        /// 根据起点、方位角和距离计算目标点坐标
         /// </summary>
         /// <param name="lng">起点经度</param>
         /// <param name="lat">起点纬度</param>

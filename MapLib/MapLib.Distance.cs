@@ -43,6 +43,8 @@ namespace MapLib
             }
         }
 
+        #region 计算多点连成的折线总长度
+
         /// <summary>
         /// 计算多点连成的折线总长度
         /// </summary>
@@ -86,6 +88,8 @@ namespace MapLib
             }
             return 0;
         }
+
+        #endregion
 
         /// <summary>
         /// 查找点到带桩号线段的最近点及对应桩号

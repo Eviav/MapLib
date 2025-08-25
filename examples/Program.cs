@@ -13,20 +13,21 @@ Console.WriteLine("方向角：" + val2);
 // 路段定位点 (纬度, 经度)
 var roadPoints = new List<double[]>
 {
-    new double[] { 39.9042, 116.4074 },   // 点1
-    new double[] { 39.9142, 116.4174 },   // 点2
-    new double[] { 39.9242, 116.4274 },   // 点3
-    new double[] { 39.9342, 116.4374 }    // 点4
+    new double[] { 116.4074, 39.9042 },
+    new double[] { 116.4174, 39.9142 },
+    new double[] { 116.4274, 39.9242 },
+    new double[] { 116.4374, 39.9342 }
 };
 
 // 设备轨迹点
 var deviceTrack = new List<double[]>
 {
-    new double[] { 39.9043, 116.4075 },   // 接近路段点1
-    new double[] { 39.9243, 116.4275 }    // 接近路段点3
+    new double[] { 116.4075, 39.9043 },
+    new double[] { 116.4071, 39.9043 },
+    new double[] { 116.4273, 39.9242 }
 };
 
 // 计算覆盖率，设置阈值为10米
-double coverage = MapLib.Map.CalculateCoverage(roadPoints, deviceTrack, 10);
+double coverage = MapLib.Map.CalculateCoverage(roadPoints, deviceTrack, 15);
 
 Console.WriteLine($"路段覆盖率: {coverage:F2}%");
