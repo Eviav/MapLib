@@ -4,155 +4,136 @@ using System.Collections.Generic;
 namespace MapLib
 {
     /// <summary>
-    /// 地图类
+    /// 地图坐标转换与处理工具类
     /// </summary>
     static partial class Map
     {
         /// <summary>
-        /// 线转区域
+        /// 将折线转换为多边形区域（沿折线两侧偏移指定距离）
         /// </summary>
-        /// <param name="line">线</param>
-        /// <param name="range">范围米</param>
-        /// <returns>返回区域</returns>
+        /// <param name="line">原始折线点集合（[经度, 纬度]数组）</param>
+        /// <param name="range">偏移距离（单位：米，默认10米）</param>
+        /// <returns>多边形区域点集合（闭合区域）</returns>
         public static double[][] LineToRegion(this double[][] line, double range = 10)
         {
-            List<double[]> result_l = new List<double[]>(line.Length), result_r = new List<double[]>(line.Length);
-            double[]? old = null;
+            // 存储左侧和右侧偏移点
+            List<double[]> leftPoints = new List<double[]>(line.Length), rightPoints = new List<double[]>(line.Length);
+            double[]? lastPoint = null;
+
+            // 遍历折线的每条线段
             for (int i = 1; i < line.Length; i++)
             {
-                double[] lineold = line[i - 1], linenew = line[i];
-                if (old == null || (old[0] != linenew[0] || old[1] != linenew[1]))
-                {
-                    old = linenew;
-                    LngLat _old = new LngLat(lineold), _new = new LngLat(linenew);
-                    var angle = Azimuth(_old, _new);
-                    result_l.Add(Destination(_old, angle - 90, range).ToDouble());
-                    result_r.Insert(0, Destination(_old, angle + 90, range).ToDouble());
+                double[] startPoint = line[i - 1], endPoint = line[i];
 
-                    if (i == line.Length - 1)
-                    {
-                        result_l.Add(Destination(_new, angle - 90, range).ToDouble());
-                        result_r.Insert(0, Destination(_new, angle + 90, range).ToDouble());
-                    }
+                // 跳过重复点（避免方向计算错误）
+                if (lastPoint != null && (lastPoint[0] == endPoint[0] && lastPoint[1] == endPoint[1])) continue;
+
+                lastPoint = endPoint;
+                LngLat start = new LngLat(startPoint), end = new LngLat(endPoint);
+
+                // 计算线段方位角（前进方向）
+                double angle = Azimuth(start, end);
+                // 左侧偏移点（方位角-90度）
+                leftPoints.Add(Destination(start, angle - 90, range).ToDouble());
+                // 右侧偏移点（方位角+90度），逆序插入以保证闭合
+                rightPoints.Insert(0, Destination(start, angle + 90, range).ToDouble());
+
+                // 处理最后一条线段的终点偏移
+                if (i == line.Length - 1)
+                {
+                    leftPoints.Add(Destination(end, angle - 90, range).ToDouble());
+                    rightPoints.Insert(0, Destination(end, angle + 90, range).ToDouble());
                 }
             }
-            var result = new List<double[]>(result_l.Count + result_r.Count);
-            result.AddRange(result_l);
-            result.AddRange(result_r);
-            return result.ToArray();
+
+            // 合并左侧和右侧点，形成闭合多边形
+            List<double[]> region = new List<double[]>(leftPoints.Count + rightPoints.Count);
+            region.AddRange(leftPoints);
+            region.AddRange(rightPoints);
+            return region.ToArray();
         }
 
-        #region 坐标转换
+        #region 坐标转换（不同坐标系之间的转换）
 
-        #region 世界坐标 转 火星坐标
+        #region WGS84（世界坐标）转GCJ02（火星坐标）
 
         /// <summary>
-        /// 世界坐标 转 火星坐标
+        /// WGS84（世界坐标）转GCJ02（火星坐标）
         /// </summary>
-        /// <param name="lnglat">经纬度</param>
-        /// <returns>WGS84 转 GCJ-02</returns>
-        public static LngLat WGS84_To_GCJ02(this LngLat lnglat)
-        {
-            return WGS84_To_GCJ02(lnglat.lng, lnglat.lat);
-        }
+        /// <param name="lnglat">WGS84经纬度</param>
+        /// <returns>GCJ02经纬度</returns>
+        public static LngLat WGS84_To_GCJ02(this LngLat lnglat) => WGS84_To_GCJ02(lnglat.lng, lnglat.lat);
 
         /// <summary>
-        /// 世界坐标 转 火星坐标
+        /// WGS84（世界坐标）转GCJ02（火星坐标）
         /// </summary>
-        /// <param name="lnglat">经纬度</param>
-        /// <returns>WGS84 转 GCJ-02</returns>
-        public static LngLat WGS84_To_GCJ02(this double[] lnglat)
-        {
-            return WGS84_To_GCJ02(lnglat[0], lnglat[1]);
-        }
+        /// <param name="lnglat">WGS84经纬度数组（[经度, 纬度]）</param>
+        /// <returns>GCJ02经纬度</returns>
+        public static LngLat WGS84_To_GCJ02(this double[] lnglat) => WGS84_To_GCJ02(lnglat[0], lnglat[1]);
 
         /// <summary>
-        /// 世界坐标 转 火星坐标
+        /// WGS84（世界坐标）转GCJ02（火星坐标）
         /// </summary>
-        /// <param name="lng">经度</param>
-        /// <param name="lat">纬度</param>
-        /// <returns>WGS84 转 GCJ-02</returns>
-        public static LngLat WGS84_To_GCJ02(double lng, double lat)
-        {
-            double dLat = transformLat(lng - 105.0, lat - 35.0);
-            double dLon = transformLng(lng - 105.0, lat - 35.0);
-            double radLat = lat / 180.0 * PI;
-            double magic = Math.Sin(radLat);
-            magic = 1 - ee * magic * magic;
-            double sqrtMagic = Math.Sqrt(magic);
-            dLat = (dLat * 180.0) / ((a * (1 - ee)) / (magic * sqrtMagic) * PI);
-            dLon = (dLon * 180.0) / (a / sqrtMagic * Math.Cos(radLat) * PI);
-            double mgLat = lat + dLat;
-            double mgLon = lng + dLon;
-            return new LngLat(mgLon, mgLat);
-        }
+        /// <param name="lng">WGS84经度</param>
+        /// <param name="lat">WGS84纬度</param>
+        /// <returns>GCJ02经纬度</returns>
+        public static LngLat WGS84_To_GCJ02(double lng, double lat) => transform(lng, lat);
 
         #endregion
 
-        #region 火星坐标 转 世界坐标
+        #region GCJ02（火星坐标）转WGS84（世界坐标）
 
         /// <summary>
-        /// 火星坐标 转 世界坐标
+        /// GCJ02（火星坐标）转WGS84（世界坐标）
         /// </summary>
-        /// <param name="lnglat">经纬度</param>
-        /// <returns>GCJ-02 转 WGS84</returns>
-        public static LngLat GCJ02_To_WGS84(this LngLat lnglat)
-        {
-            return GCJ02_To_WGS84(lnglat.lng, lnglat.lat);
-        }
+        /// <param name="lnglat">GCJ02经纬度</param>
+        /// <returns>WGS84经纬度</returns>
+        public static LngLat GCJ02_To_WGS84(this LngLat lnglat) => GCJ02_To_WGS84(lnglat.lng, lnglat.lat);
 
         /// <summary>
-        /// 火星坐标 转 世界坐标
+        /// GCJ02（火星坐标）转WGS84（世界坐标）
         /// </summary>
-        /// <param name="lnglat">经纬度</param>
-        /// <returns>GCJ-02 转 WGS84</returns>
-        public static LngLat GCJ02_To_WGS84(this double[] lnglat)
-        {
-            return GCJ02_To_WGS84(lnglat[0], lnglat[1]);
-        }
+        /// <param name="lnglat">GCJ02经纬度数组</param>
+        /// <returns>WGS84经纬度</returns>
+        public static LngLat GCJ02_To_WGS84(this double[] lnglat) => GCJ02_To_WGS84(lnglat[0], lnglat[1]);
 
         /// <summary>
-        /// 火星坐标 转 世界坐标
+        /// GCJ02（火星坐标）转WGS84（世界坐标）
         /// </summary>
-        /// <param name="lng">经度</param>
-        /// <param name="lat">纬度</param>
-        /// <returns>GCJ-02 转 WGS84</returns>
+        /// <param name="lng">GCJ02经度</param>
+        /// <param name="lat">GCJ02纬度</param>
+        /// <returns>WGS84经纬度</returns>
         public static LngLat GCJ02_To_WGS84(double lng, double lat)
         {
-            LngLat gps = transform(lng, lat);
-            return new LngLat(lng * 2 - gps.lng, lat * 2 - gps.lat);
+            // 先将GCJ02转为虚拟WGS84，再通过反向计算得到真实WGS84
+            LngLat fakeWgs = transform(lng, lat);
+            return new LngLat(lng * 2 - fakeWgs.lng, lat * 2 - fakeWgs.lat);
         }
 
         #endregion
 
-        #region 火星坐标 转 百度坐标
+        #region GCJ02（火星坐标）转BD09（百度坐标）
 
         /// <summary>
-        /// 火星坐标 转 百度坐标
+        /// GCJ02（火星坐标）转BD09（百度坐标）
         /// </summary>
-        /// <param name="lnglat">经纬度</param>
-        /// <returns>GCJ-02 转 BD-09</returns>
-        public static LngLat GCJ02_To_BD09(this LngLat lnglat)
-        {
-            return GCJ02_To_BD09(lnglat.lng, lnglat.lat);
-        }
+        /// <param name="lnglat">GCJ02经纬度</param>
+        /// <returns>BD09经纬度</returns>
+        public static LngLat GCJ02_To_BD09(this LngLat lnglat) => GCJ02_To_BD09(lnglat.lng, lnglat.lat);
 
         /// <summary>
-        /// 火星坐标 转 百度坐标
+        /// GCJ02（火星坐标）转BD09（百度坐标）
         /// </summary>
-        /// <param name="lnglat">经纬度</param>
-        /// <returns>GCJ-02 转 BD-09</returns>
-        public static LngLat GCJ02_To_BD09(this double[] lnglat)
-        {
-            return GCJ02_To_BD09(lnglat[0], lnglat[1]);
-        }
+        /// <param name="lnglat">GCJ02经纬度数组</param>
+        /// <returns>BD09经纬度</returns>
+        public static LngLat GCJ02_To_BD09(this double[] lnglat) => GCJ02_To_BD09(lnglat[0], lnglat[1]);
 
         /// <summary>
-        /// 火星坐标 转 百度坐标
+        /// GCJ02（火星坐标）转BD09（百度坐标）
         /// </summary>
-        /// <param name="lng">经度</param>
-        /// <param name="lat">纬度</param>
-        /// <returns>GCJ-02 转 BD-09</returns>
+        /// <param name="lng">GCJ02经度</param>
+        /// <param name="lat">GCJ02纬度</param>
+        /// <returns>BD09经纬度</returns>
         public static LngLat GCJ02_To_BD09(double lng, double lat)
         {
             double x = lng, y = lat;
@@ -165,30 +146,31 @@ namespace MapLib
 
         #endregion
 
-        #region 百度坐标 转 火星坐标
+        #region BD09（百度坐标）转GCJ02（火星坐标）
 
         /// <summary>
-        /// 百度坐标 转 火星坐标
+        /// BD09（百度坐标）转GCJ02（火星坐标）
         /// </summary>
-        /// <param name="lnglat">经纬度</param>
-        /// <returns>BD-09 转 GCJ-02</returns>
+        /// <param name="lnglat">BD09经纬度</param>
+        /// <returns>GCJ02经纬度</returns>
         public static LngLat BD09_To_GCJ02(this LngLat lnglat) => BD09_To_GCJ02(lnglat.lng, lnglat.lat);
 
         /// <summary>
-        /// 百度坐标 转 火星坐标
+        /// BD09（百度坐标）转GCJ02（火星坐标）
         /// </summary>
-        /// <param name="lnglat">经纬度</param>
-        /// <returns>BD-09 转 GCJ-02</returns>
+        /// <param name="lnglat">BD09经纬度数组</param>
+        /// <returns>GCJ02经纬度</returns>
         public static LngLat BD09_To_GCJ02(this double[] lnglat) => BD09_To_GCJ02(lnglat[0], lnglat[1]);
 
         /// <summary>
-        /// 百度坐标 转 火星坐标
+        /// BD09（百度坐标）转GCJ02（火星坐标）
         /// </summary>
-        /// <param name="lng">经度</param>
-        /// <param name="lat">纬度</param>
-        /// <returns>BD-09 转 GCJ-02</returns>
+        /// <param name="lng">BD09经度</param>
+        /// <param name="lat">BD09纬度</param>
+        /// <returns>GCJ02经纬度</returns>
         public static LngLat BD09_To_GCJ02(double lng, double lat)
         {
+            // 百度解密算法（反向偏移）
             double x = lng - 0.0065, y = lat - 0.006;
             double z = Math.Sqrt(x * x + y * y) - 0.00002 * Math.Sin(y * PI);
             double theta = Math.Atan2(y, x) - 0.000003 * Math.Cos(x * PI);
@@ -198,58 +180,66 @@ namespace MapLib
 
         #endregion
 
-        #region 百度坐标 转 世界坐标
+        #region BD09（百度坐标）转WGS84（世界坐标）
 
         /// <summary>
-        /// 百度坐标 转 世界坐标
+        /// BD09（百度坐标）转WGS84（世界坐标）
         /// </summary>
-        /// <param name="lnglat">经纬度</param>
-        /// <returns>BD-09 转 WGS84</returns>
+        /// <param name="lnglat">BD09经纬度</param>
+        /// <returns>WGS84经纬度</returns>
         public static LngLat BD09_To_WGS84(this LngLat lnglat) => BD09_To_WGS84(lnglat.lng, lnglat.lat);
 
         /// <summary>
-        /// 百度坐标 转 世界坐标
+        /// BD09（百度坐标）转WGS84（世界坐标）
         /// </summary>
-        /// <param name="lnglat">经纬度</param>
-        /// <returns>BD-09 转 WGS84</returns>
+        /// <param name="lnglat">BD09经纬度数组</param>
+        /// <returns>WGS84经纬度</returns>
         public static LngLat BD09_To_WGS84(this double[] lnglat) => BD09_To_WGS84(lnglat[0], lnglat[1]);
 
         /// <summary>
-        /// 百度坐标 转 世界坐标
+        /// BD09（百度坐标）转WGS84（世界坐标）
         /// </summary>
-        /// <param name="lng">经度</param>
-        /// <param name="lat">纬度</param>
-        /// <returns>BD-09 转 WGS84</returns>
+        /// <param name="lng">BD09经度</param>
+        /// <param name="lat">BD09纬度</param>
+        /// <returns>WGS84经纬度</returns>
         public static LngLat BD09_To_WGS84(double lng, double lat) => GCJ02_To_WGS84(BD09_To_GCJ02(lng, lat));
 
         #endregion
 
         /// <summary>
-        /// 是否在中国
+        /// 判断经纬度是否在中国境内（粗略判断，用于坐标系转换优化）
         /// </summary>
         /// <param name="lng">经度</param>
         /// <param name="lat">纬度</param>
+        /// <returns>true：可能在中国境内；false：不在</returns>
         public static bool IsInChina(double lng, double lat)
         {
+            // 中国大致经纬度范围：经度73°~135°，纬度18°~53°
             if ((lng < 72.004 || lng > 137.8347) || (lat < 0.8293 || lat > 55.8271)) return true;
             return false;
         }
 
+        /// <summary>
+        /// GCJ02加密核心算法（计算偏移量）
+        /// </summary>
+        /// <param name="lng">经度</param>
+        /// <param name="lat">纬度</param>
+        /// <returns>加密后的虚拟WGS84坐标</returns>
         static LngLat transform(double lng, double lat)
         {
-            double dLat = transformLat(lng - 105.0, lat - 35.0);
-            double dLon = transformLng(lng - 105.0, lat - 35.0);
-            double radLat = lat / 180.0 * PI;
-            double magic = Math.Sin(radLat);
+            double dLat = transformLat(lng - 105.0, lat - 35.0), dLon = transformLng(lng - 105.0, lat - 35.0);
+            double radLat = lat / 180.0 * PI, magic = Math.Sin(radLat);
             magic = 1 - ee * magic * magic;
             double sqrtMagic = Math.Sqrt(magic);
             dLat = (dLat * 180.0) / ((a * (1 - ee)) / (magic * sqrtMagic) * PI);
             dLon = (dLon * 180.0) / (a / sqrtMagic * Math.Cos(radLat) * PI);
-            double mgLat = lat + dLat;
-            double mgLon = lng + dLon;
+            double mgLat = lat + dLat, mgLon = lng + dLon;
             return new LngLat(mgLon, mgLat);
         }
 
+        /// <summary>
+        /// 计算纬度偏移量（GCJ02加密）
+        /// </summary>
         static double transformLat(double x, double y)
         {
             double ret = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.Sqrt(Math.Abs(x));
@@ -259,6 +249,9 @@ namespace MapLib
             return ret;
         }
 
+        /// <summary>
+        /// 计算经度偏移量（GCJ02加密）
+        /// </summary>
         static double transformLng(double x, double y)
         {
             double ret = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.Sqrt(Math.Abs(x));
