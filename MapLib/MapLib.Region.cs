@@ -199,5 +199,47 @@ namespace MapLib
             region.AddRange(rightPoints);
             return region.ToArray();
         }
+
+        /// <summary>
+        /// 计算多边形的中心点
+        /// </summary>
+        /// <param name="polygon">多边形（长度大于0）</param>
+        /// <returns>中心点</returns>
+        public static double[] PolygonCenter(IList<double[]> polygon)
+        {
+            int n = polygon.Count;
+            if (n == 0) throw new ArgumentException("多边形不能包含零个点");
+            if (n > 2)
+            {
+                double area = 0.0, cx = 0.0, cy = 0.0;
+                for (int i = 0; i < n; i++)
+                {
+                    int j = (i + 1) % n;
+
+                    double xi = polygon[i][0], yi = polygon[i][1], xj = polygon[j][0], yj = polygon[j][1];
+
+                    double crossProduct = xi * yj - xj * yi;
+                    area += crossProduct;
+                    cx += (xi + xj) * crossProduct;
+                    cy += (yi + yj) * crossProduct;
+                }
+
+                area *= 0.5;
+                if (Math.Abs(area) < 1e-10) // 避免除以零
+                    throw new ArgumentException("无效的多边形，面积为零");
+
+                cx /= (6 * area);
+                cy /= (6 * area);
+
+                return new double[] { cx, cy };
+            }
+            else if (n > 1)
+            {
+                // 两点之间的中心点
+                double midX = (polygon[0][0] + polygon[1][0]) / 2.0, midY = (polygon[0][1] + polygon[1][1]) / 2.0;
+                return new double[] { midX, midY };
+            }
+            else return polygon[0];
+        }
     }
 }
