@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace MapLib
 {
@@ -15,6 +15,12 @@ namespace MapLib
         /// 角度转弧度系数（π/180）
         /// </summary>
         public const double PI180 = PI / 180;
+
+        /// <summary>
+        /// WGS84椭球长半轴（单位：米）
+        /// </summary>
+        public const double EarthRadius = 6378137.0;
+
         /// <summary>
         /// WGS84椭球长半轴（单位：米）
         /// </summary>
@@ -56,7 +62,7 @@ namespace MapLib
             // 计算方位角（基于球面三角公式）
             double y = Math.Sin(lng_end_rad - lng_start_rad) * Math.Cos(lat_end_rad), x = Math.Cos(lat_start_rad) * Math.Sin(lat_end_rad) - Math.Sin(lat_start_rad) * Math.Cos(lat_end_rad) * Math.Cos(lng_end_rad - lng_start_rad);
             var brng = Math.Atan2(y, x) * 180 / PI;
-            return (brng + 360.0) % 360.0;
+            return (brng + 360) % 360;
         }
 
         /// <summary>
@@ -87,7 +93,7 @@ namespace MapLib
         /// <returns>目标点坐标</returns>
         public static LngLat Destination(double lng, double lat, double bearing, double m)
         {
-            var radius = 6371e3;
+            var radius = 6371000;
             double lng_rad = lng * PI180, lat_rad = lat * PI180;
             double brng = bearing * PI180;
             double _lat = Math.Asin(Math.Sin(lat_rad) * Math.Cos(m / radius) + Math.Cos(lat_rad) * Math.Sin(m / radius) * Math.Cos(brng)), _lng = lng_rad + Math.Atan2(Math.Sin(brng) * Math.Sin(m / radius) * Math.Cos(lat_rad), Math.Cos(m / radius) - Math.Sin(lat_rad) * Math.Sin(_lat));

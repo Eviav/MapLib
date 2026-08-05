@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace MapLib
@@ -86,7 +86,6 @@ namespace MapLib
 
             return minDistance;
         }
-
 
         /// <summary>
         /// 计算点到航线的最短距离（判断是否偏离航线）
@@ -281,9 +280,9 @@ namespace MapLib
 
             int coveredCount = 0, totalValidPoints = roadPoints.Count;
 
-            foreach (var gps in gpsPoints)
+            foreach (var gps in roadPoints)
             {
-                double distance = gps.PointToPointLine(roadPoints);
+                double distance = gps.PointToPointLine(gpsPoints);
                 if (distance <= distanceThreshold) coveredCount++;
             }
 
@@ -311,6 +310,99 @@ namespace MapLib
 
             return coveredCount * 1.0 / totalValidPoints;
         }
+
+        /// <summary>
+        /// 计算GPS点集合(带 Tag)对道路的覆盖度,直接返回落在阈值内的GPS点(保留 Tag 便于调用方回查时间戳/速度等)。
+        /// 实现走 SpatialGrid 空间索引:把 GPS 装箱后,沿道路段逐段按"段包围盒 + 1 格缓冲"查候选 GPS,再用 PointToPointLine 对单段做精判。
+        /// 复杂度 O(N + M×K),N 为 GPS 数,M 为道路段数,K 为常数(每段邻域内的候选数),不再有 N×M 的暴力循环。
+        /// prog:被 GPS 轨迹覆盖到的道路段数 / 道路段数,严格落在 0~1 区间。
+        /// </summary>
+        /// <typeparam name="T">Tag 字段的类型(避免 object boxing)</typeparam>
+        /// <param name="roadPoints">道路折线点集合</param>
+        /// <param name="gpsPoints">GPS点集合(PointT&lt;T&gt;,带 Tag)</param>
+        /// <param name="distanceThreshold">距离阈值(米)</param>
+        /// <param name="covered">落在阈值内的GPS点(无命中或参数无效时为空集合)</param>
+        /// <returns>覆盖比例(0~1);参数无效时返回-1</returns>
+        public static double CalculateCoverage<T>(IList<double[]> roadPoints, IList<LngLat<T>> gpsPoints, double distanceThreshold, out List<LngLat<T>> covered)
+        {
+            if (roadPoints == null || roadPoints.Count < 2 || gpsPoints == null || gpsPoints.Count == 0)
+            {
+                covered = new List<LngLat<T>>(0);
+                return -1;
+            }
+            int totalSegments = roadPoints.Count - 1;
+
+            // 1) GPS 包围盒 + 网格单元大小(同时满足"密度自适应"和"阈值内候选不漏"两约束)
+            double minLng = double.MaxValue, maxLng = double.MinValue;
+            double minLat = double.MaxValue, maxLat = double.MinValue;
+            for (int i = 0; i < gpsPoints.Count; i++)
+            {
+                var g = gpsPoints[i];
+                if (g.lng < minLng) minLng = g.lng;
+                if (g.lng > maxLng) maxLng = g.lng;
+                if (g.lat < minLat) minLat = g.lat;
+                if (g.lat > maxLat) maxLat = g.lat;
+            }
+            double bboxLng = Math.Max(maxLng - minLng, 1e-9), bboxLat = Math.Max(maxLat - minLat, 1e-9);
+            double centerLat = (minLat + maxLat) * 0.5;
+            double cosLat = Math.Max(Math.Cos(centerLat * PI180), 0.1);
+            int sqrtN = Math.Max(1, (int)Math.Ceiling(Math.Sqrt(gpsPoints.Count)));
+            double autoDegLng = bboxLng / sqrtN, autoDegLat = bboxLat / sqrtN;
+            double thresholdDegLng = 3 * distanceThreshold / (111320.0 * cosLat), thresholdDegLat = 3 * distanceThreshold / 111320.0;
+            double cellSizeLng = Math.Max(autoDegLng, thresholdDegLng), cellSizeLat = Math.Max(autoDegLat, thresholdDegLat);
+
+            // 2) 把 GPS 装箱到 SpatialGrid(一次性 O(N) 工作量)
+            var grid = new SpatialGrid<LngLat<T>>(cellSizeLng, cellSizeLat);
+            for (int i = 0; i < gpsPoints.Count; i++)
+            {
+                var g = gpsPoints[i];
+                grid.Insert(i, g, g.lng, g.lat);
+            }
+
+            // 3) 沿道路段逐段查询附近 GPS,对每段做精判
+            var gpsMatched = new bool[gpsPoints.Count];
+            covered = new List<LngLat<T>>();
+            var segmentCovered = new bool[totalSegments];
+            int coveredCount = 0;
+
+            // 复用的 2-元素 LngLat 缓冲区(供 PointToPointLine 单段距离精判)
+            var segLngLat = new LngLat[] { new LngLat(0, 0), new LngLat(0, 0) };
+
+            for (int si = 0; si < totalSegments; si++)
+            {
+                var a = roadPoints[si];
+                var b = roadPoints[si + 1];
+                segLngLat[0].lng = a[0]; segLngLat[0].lat = a[1];
+                segLngLat[1].lng = b[0]; segLngLat[1].lat = b[1];
+
+                double segMinLng = Math.Min(a[0], b[0]), segMaxLng = Math.Max(a[0], b[0]);
+                double segMinLat = Math.Min(a[1], b[1]), segMaxLat = Math.Max(a[1], b[1]);
+
+                foreach (var entry in grid.QueryBoundingBox(segMinLng, segMaxLng, segMinLat, segMaxLat))
+                {
+                    double d = entry.Item.PointToPointLine(segLngLat);
+                    if (d > distanceThreshold) continue;
+
+                    if (!segmentCovered[si])
+                    {
+                        segmentCovered[si] = true;
+                        coveredCount++;
+                    }
+                    if (!gpsMatched[entry.Index])
+                    {
+                        gpsMatched[entry.Index] = true;
+                        covered.Add(entry.Item);
+                    }
+                }
+            }
+
+            return coveredCount * 1.0 / totalSegments;
+        }
+
+        /// <summary>
+        /// 便捷包装:仅返回覆盖比例,不输出覆盖点集合。
+        /// </summary>
+        public static double CalculateCoverage<T>(IList<double[]> roadPoints, IList<LngLat<T>> gpsPoints, double distanceThreshold = 10) => CalculateCoverage(roadPoints, gpsPoints, distanceThreshold, out _);
 
         #endregion
     }

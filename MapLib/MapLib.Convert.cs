@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace MapLib
 {
@@ -134,6 +134,32 @@ namespace MapLib
 
         #endregion
 
+        #region WGS84（世界坐标）转BD09（百度坐标）
+
+        /// <summary>
+        /// WGS84（世界坐标）转BD09（百度坐标）
+        /// </summary>
+        /// <param name="lnglat">WGS84经纬度</param>
+        /// <returns>BD09经纬度</returns>
+        public static LngLat WGS84_To_BD09(this LngLat lnglat) => WGS84_To_BD09(lnglat.lng, lnglat.lat);
+
+        /// <summary>
+        /// WGS84（世界坐标）转BD09（百度坐标）
+        /// </summary>
+        /// <param name="lnglat">WGS84经纬度数组</param>
+        /// <returns>BD09经纬度</returns>
+        public static LngLat WGS84_To_BD09(this double[] lnglat) => WGS84_To_BD09(lnglat[0], lnglat[1]);
+
+        /// <summary>
+        /// WGS84（世界坐标）转BD09（百度坐标）
+        /// </summary>
+        /// <param name="lng">WGS84经度</param>
+        /// <param name="lat">WGS84纬度</param>
+        /// <returns>BD09经纬度</returns>
+        public static LngLat WGS84_To_BD09(double lng, double lat) => GCJ02_To_BD09(WGS84_To_GCJ02(lng, lat));
+
+        #endregion
+
         #region BD09（百度坐标）转WGS84（世界坐标）
 
         /// <summary>
@@ -166,12 +192,7 @@ namespace MapLib
         /// <param name="lng">经度</param>
         /// <param name="lat">纬度</param>
         /// <returns>true：可能在中国境内；false：不在</returns>
-        public static bool IsInChina(double lng, double lat)
-        {
-            // 中国大致经纬度范围：经度73°~135°，纬度18°~53°
-            if ((lng < 72.004 || lng > 137.8347) || (lat < 0.8293 || lat > 55.8271)) return true;
-            return false;
-        }
+        public static bool IsInChina(double lng, double lat) => lng < 72.004 || lng > 137.8347 || lat < 0.8293 || lat > 55.8271;
 
         /// <summary>
         /// GCJ02加密核心算法（计算偏移量）
@@ -182,11 +203,11 @@ namespace MapLib
         static LngLat transform(double lng, double lat)
         {
             double dLat = transformLat(lng - 105.0, lat - 35.0), dLon = transformLng(lng - 105.0, lat - 35.0);
-            double radLat = lat / 180.0 * PI, magic = Math.Sin(radLat);
+            double radLat = lat / 180 * PI, magic = Math.Sin(radLat);
             magic = 1 - ee * magic * magic;
             double sqrtMagic = Math.Sqrt(magic);
-            dLat = (dLat * 180.0) / ((a * (1 - ee)) / (magic * sqrtMagic) * PI);
-            dLon = (dLon * 180.0) / (a / sqrtMagic * Math.Cos(radLat) * PI);
+            dLat = (dLat * 180) / ((a * (1 - ee)) / (magic * sqrtMagic) * PI);
+            dLon = (dLon * 180) / (a / sqrtMagic * Math.Cos(radLat) * PI);
             double mgLat = lat + dLat, mgLon = lng + dLon;
             return new LngLat(mgLon, mgLat);
         }

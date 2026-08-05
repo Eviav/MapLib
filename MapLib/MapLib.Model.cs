@@ -1,4 +1,4 @@
-﻿namespace MapLib
+namespace MapLib
 {
     /// <summary>
     /// 经纬度坐标模型
@@ -57,6 +57,39 @@
         /// </summary>
         /// <returns>双精度数组</returns>
         public double[] ToDouble() => new double[] { lng, lat };
+    }
+
+    /// <summary>
+    /// 经纬度坐标模型
+    /// </summary>
+    /// <typeparam name="T">Tag 字段的类型</typeparam>
+    public class LngLat<T> : LngLat
+    {
+        /// <summary>
+        /// 初始化带泛型Tag的经纬度坐标
+        /// </summary>
+        /// <param name="lng">经度</param>
+        /// <param name="lat">纬度</param>
+        /// <param name="_tag">附加信息(调用方可填入任意自定义数据)</param>
+        public LngLat(double lng, double lat, T _tag) : base(lng, lat)
+        {
+            tag = _tag;
+        }
+
+        /// <summary>
+        /// 从已有经纬度初始化带桩号坐标
+        /// </summary>
+        /// <param name="lnglat">基础经纬度</param>
+        /// <param name="_tag">附加信息(调用方可填入任意自定义数据)</param>
+        public LngLat(LngLat lnglat, T _tag) : base(lnglat)
+        {
+            tag = _tag;
+        }
+
+        /// <summary>
+        /// 附加信息(类型由 T 决定)
+        /// </summary>
+        public T tag { get; set; }
     }
 
     /// <summary>

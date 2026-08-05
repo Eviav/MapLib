@@ -1,4 +1,4 @@
-﻿Console.WriteLine("Hello, MapLib");
+Console.WriteLine("Hello, MapLib");
 var valstr = MapLib.Map.StationToStr(1010);
 Console.WriteLine("1010桩号：" + valstr);
 int st2 = 1010 + 990;
