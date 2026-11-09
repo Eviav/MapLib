@@ -14,9 +14,9 @@ namespace MapLib
         /// <param name="lat">实时点的纬度</param>
         /// <param name="points">构成航线的有序点集合（线段序列）</param>
         /// <returns>点到航线的最短距离（单位：米）；若航线点数量不足，返回合理默认值</returns>
-        public static double PointToPointLine(double lng, double lat, IList<LngLat> points)
+        public static double? PointToPointLine(double lng, double lat, IList<LngLat> points)
         {
-            double minDistance = -1; // 初始化最短距离（-1表示未计算有效值）
+            double? minDistance = null; // 初始化最短距离
             // 遍历航线中所有连续线段
             for (int i = 0; i < points.Count - 1; i++)
             {
@@ -53,7 +53,7 @@ namespace MapLib
 
                 // 求点到直线的垂足及距离
                 var foot = GetFootOfPerpendicular(lng, lat, a, b, c);
-                if (foot == null) return -1; // 垂足计算失败，返回错误值
+                if (foot == null) return null; // 垂足计算失败，返回错误值
 
                 // 计算点到垂足的直线距离
                 double distance = Distance(lng, lat, foot.lng, foot.lat);
@@ -62,7 +62,7 @@ namespace MapLib
                 if (foot.lng >= rangeX[0] && foot.lng <= rangeX[1] && foot.lat >= rangeY[0] && foot.lat <= rangeY[1])
                 {
                     // 垂足在线段上：更新最短距离（首次计算或当前距离更小）
-                    if (minDistance == -1 || distance < minDistance) minDistance = distance;
+                    if (minDistance == null || distance < minDistance) minDistance = distance;
                 }
                 else
                 {
@@ -71,13 +71,13 @@ namespace MapLib
                     double distanceToStart = Distance(lng, lat, p1.lng, p1.lat), distanceToEnd = Distance(lng, lat, p2.lng, p2.lat);
                     distance = Math.Min(distanceToStart, distanceToEnd);
                     // 更新最短距离
-                    if (minDistance == -1 || distance < minDistance) minDistance = distance;
+                    if (minDistance == null || distance < minDistance) minDistance = distance;
                 }
             }
 
             // 若未计算到有效距离（如航线只有1个点），返回点到航线首尾点的最小距离
             // 如果是初始值则再次计算点到首末两点的距离，若均大于allowRange则认为偏离航线
-            if (minDistance == -1)
+            if (minDistance == null)
             {
                 LngLat startPoint = points[0], endPoint = points[points.Count - 1];
                 double start = Distance(lng, lat, startPoint.lng, startPoint.lat), end = Distance(lng, lat, endPoint.lng, endPoint.lat);
@@ -93,9 +93,9 @@ namespace MapLib
         /// <param name="point">实时点坐标</param>
         /// <param name="points">构成航线的有序点集合（线段序列）</param>
         /// <returns>点到航线的最短距离（单位：米）；若航线点数量不足，返回合理默认值</returns>
-        public static double PointToPointLine(this LngLat point, IList<LngLat> points)
+        public static double? PointToPointLine(this LngLat point, IList<LngLat> points)
         {
-            double minDistance = -1; // 初始化最短距离（-1表示未计算有效值）
+            double? minDistance = null; // 初始化最短距离
             // 遍历航线中所有连续线段
             for (int i = 0; i < points.Count - 1; i++)
             {
@@ -132,7 +132,7 @@ namespace MapLib
 
                 // 求点到直线的垂足及距离
                 var foot = GetFootOfPerpendicular(point.lng, point.lat, a, b, c);
-                if (foot == null) return -1; // 垂足计算失败，返回错误值
+                if (foot == null) return null; // 垂足计算失败，返回错误值
 
                 // 计算点到垂足的直线距离
                 double distance = Distance(point.lng, point.lat, foot.lng, foot.lat);
@@ -141,7 +141,7 @@ namespace MapLib
                 if (foot.lng >= rangeX[0] && foot.lng <= rangeX[1] && foot.lat >= rangeY[0] && foot.lat <= rangeY[1])
                 {
                     // 垂足在线段上：更新最短距离（首次计算或当前距离更小）
-                    if (minDistance == -1 || distance < minDistance) minDistance = distance;
+                    if (minDistance == null || distance < minDistance) minDistance = distance;
                 }
                 else
                 {
@@ -149,13 +149,13 @@ namespace MapLib
                     double distanceToStart = Distance(point, points[i]), distanceToEnd = Distance(point, points[i + 1]);
                     distance = Math.Min(distanceToStart, distanceToEnd);
                     // 更新最短距离
-                    if (minDistance == -1 || distance < minDistance) minDistance = distance;
+                    if (minDistance == null || distance < minDistance) minDistance = distance;
                 }
             }
 
             // 若未计算到有效距离（如航线只有1个点），返回点到航线首尾点的最小距离
             // 如果是初始值则再次计算点到首末两点的距离，若均大于allowRange则认为偏离航线
-            if (minDistance == -1)
+            if (minDistance == null)
             {
                 LngLat startPoint = points[0], endPoint = points[points.Count - 1];
                 double start = Distance(point.lng, point.lat, startPoint.lng, startPoint.lat), end = Distance(point.lng, point.lat, endPoint.lng, endPoint.lat);
@@ -171,9 +171,9 @@ namespace MapLib
         /// <param name="point">实时点坐标</param>
         /// <param name="points">构成航线的有序点集合（线段序列）</param>
         /// <returns>点到航线的最短距离（单位：米）；若航线点数量不足，返回合理默认值</returns>
-        public static double PointToPointLine(this double[] point, IList<double[]> points)
+        public static double? PointToPointLine(this double[] point, IList<double[]> points)
         {
-            double minDistance = -1; // 初始化最短距离（-1表示未计算有效值）
+            double? minDistance = null; // 初始化最短距离
             // 遍历航线中所有连续线段
             for (int i = 0; i < points.Count - 1; i++)
             {
@@ -210,7 +210,7 @@ namespace MapLib
 
                 // 求点到直线的垂足及距离
                 var foot = GetFootOfPerpendicular(point[0], point[1], a, b, c);
-                if (foot == null) return -1; // 垂足计算失败，返回错误值
+                if (foot == null) return null; // 垂足计算失败，返回错误值
 
                 // 计算点到垂足的直线距离
                 double distance = Distance(point[0], point[1], foot.lng, foot.lat);
@@ -219,7 +219,7 @@ namespace MapLib
                 if (foot.lng >= rangeX[0] && foot.lng <= rangeX[1] && foot.lat >= rangeY[0] && foot.lat <= rangeY[1])
                 {
                     // 垂足在线段上：更新最短距离（首次计算或当前距离更小）
-                    if (minDistance == -1 || distance < minDistance) minDistance = distance;
+                    if (minDistance == null || distance < minDistance) minDistance = distance;
                 }
                 else
                 {
@@ -227,13 +227,13 @@ namespace MapLib
                     double distanceToStart = Distance(point, points[i]), distanceToEnd = Distance(point, points[i + 1]);
                     distance = Math.Min(distanceToStart, distanceToEnd);
                     // 更新最短距离
-                    if (minDistance == -1 || distance < minDistance) minDistance = distance;
+                    if (minDistance == null || distance < minDistance) minDistance = distance;
                 }
             }
 
             // 若未计算到有效距离（如航线只有1个点），返回点到航线首尾点的最小距离
             // 如果是初始值则再次计算点到首末两点的距离，若均大于allowRange则认为偏离航线
-            if (minDistance == -1)
+            if (minDistance == null)
             {
                 double[] startPoint = points[0], endPoint = points[points.Count - 1];
                 double start = Distance(point[0], point[1], startPoint[0], startPoint[1]), end = Distance(point[0], point[1], endPoint[0], endPoint[1]);
@@ -282,7 +282,7 @@ namespace MapLib
 
             foreach (var gps in roadPoints)
             {
-                double distance = gps.PointToPointLine(gpsPoints);
+                var distance = gps.PointToPointLine(gpsPoints);
                 if (distance <= distanceThreshold) coveredCount++;
             }
 
@@ -304,7 +304,7 @@ namespace MapLib
 
             foreach (var gps in roadPoints)
             {
-                double distance = gps.PointToPointLine(gpsPoints);
+                var distance = gps.PointToPointLine(gpsPoints);
                 if (distance <= distanceThreshold) coveredCount++;
             }
 
@@ -380,18 +380,19 @@ namespace MapLib
 
                 foreach (var entry in grid.QueryBoundingBox(segMinLng, segMaxLng, segMinLat, segMaxLat))
                 {
-                    double d = entry.Item.PointToPointLine(segLngLat);
-                    if (d > distanceThreshold) continue;
-
-                    if (!segmentCovered[si])
+                    var d = entry.Item.PointToPointLine(segLngLat);
+                    if (d <= distanceThreshold)
                     {
-                        segmentCovered[si] = true;
-                        coveredCount++;
-                    }
-                    if (!gpsMatched[entry.Index])
-                    {
-                        gpsMatched[entry.Index] = true;
-                        covered.Add(entry.Item);
+                        if (!segmentCovered[si])
+                        {
+                            segmentCovered[si] = true;
+                            coveredCount++;
+                        }
+                        if (!gpsMatched[entry.Index])
+                        {
+                            gpsMatched[entry.Index] = true;
+                            covered.Add(entry.Item);
+                        }
                     }
                 }
             }
