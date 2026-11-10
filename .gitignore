@@ -6,16 +6,25 @@ bin-release/
 
 # Other files and folders
 *.csproj.user
+*.vcxproj.filters
+*.vcxproj.user
+*.pubxml.user
+*.snk
 
 # Executables
 *.swf
 *.air
 *.ipa
 *.apk
-*.vcxproj.filters
-*.vcxproj.user
-*.pubxml.user
 
-/.vs
-/packages
-/nuget*
+# Projects
+.vs/
+.vscode/
+.idea/
+.claude/
+.codex/
+.gemini/
+.copilot/
+.cursor/
+.workbuddy/
+.mimosa/
