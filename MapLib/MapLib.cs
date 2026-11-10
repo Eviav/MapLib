@@ -10,7 +10,18 @@ namespace MapLib
         /// <summary>
         /// 数学常量：圆周率π
         /// </summary>
-        public const double PI = 3.1415926535897932384626;
+        public const double PI = Math.PI;
+
+        /// <summary>
+        /// BD09（百度坐标）加/解密专用常数：3000π/180 ≈ 52.35987755982988。
+        /// 取自百度地图 JSAPI v4.0 主脚本：var pd = 3000 * Math.PI / 180，
+        /// 其本地加密函数 oX()（GCJ02→BD09）与解密函数 pj()（BD09→GCJ02）
+        /// 的三角函数均以 pd 为自变量系数。
+        /// 切勿误写成 Math.PI：自变量会缩小约 16.67 倍，导致转换结果
+        /// 产生 0~60 米、且随坐标非线性变化的偏差。
+        /// </summary>
+        public const double X_PI = PI * 3000.0 / 180.0;
+
         /// <summary>
         /// 角度转弧度系数（π/180）
         /// </summary>
@@ -25,6 +36,7 @@ namespace MapLib
         /// WGS84椭球长半轴（单位：米）
         /// </summary>
         public const double a = 6378245.0;
+
         /// <summary>
         /// WGS84椭球第一偏心率平方
         /// </summary>
